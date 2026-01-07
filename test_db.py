@@ -17,7 +17,7 @@ try:
     print("Tables created Succesfully")
 
     # Verification
-    with engine.connect() as conenction:
+    with engine.connect() as connection:
         result = connection.execute(text("SHOW TABLES;"))
         print("\nExisting Tables:")
         for row in result:
