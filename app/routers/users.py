@@ -15,9 +15,14 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     Create a new user
     """
     #validation for email
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user:
+    db_user_email = db.query(models.User).filter(models.User.email == user.email).first()
+    if db_user_email:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    #validation for username
+    db_user_username = db.query(models.User).filter(models.User.username == user.username).first()
+    if db_user_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
     
     #create user object
     new_user = models.User(username=user.username, email=user.email)
@@ -37,7 +42,7 @@ def get_user_documents(user_id: int,db: Session = Depends(get_db)):
     #1. Check if user exists(optional)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, details="User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     
     # 2. Fetch documents via relationship or direct query
     return db.query(models.Document).filter(models.Document.user_id == user_id).all()

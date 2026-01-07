@@ -5,7 +5,8 @@ from app import models, schemas, database
 router = APIRouter(prefix="/documents",tags=["Documents"])
 get_db=database.get_db
 
-@router.post("/", response_model=schemas.DocumentCreate, status_code=status.HTTP_201_CREATED)
+# FIX: Changed response_model to DocumentResponse so we return the ID
+@router.post("/", response_model=schemas.DocumentResponse, status_code=status.HTTP_201_CREATED)
 def create_document(doc: schemas.DocumentCreate, db: Session = Depends(get_db)):
     """
     Create a new document for an existing user
