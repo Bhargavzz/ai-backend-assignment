@@ -10,3 +10,5 @@ pytesseract
 pdf2image
 python-multipart
 Pillow
+faiss-cpu
+sentence-transformers
