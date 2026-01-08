@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import List,Optional
 from datetime import datetime
 
@@ -6,8 +6,9 @@ from datetime import datetime
 
 class UserBase(BaseModel):
     """Shared properties for reading and writing"""
-    username: str
-    email: EmailStr #pydantic automatically validate if this is a real email format
+    # Min 3, max 50 chars, alphanumeric + underscore only (prevents XSS, ensures reasonable length)
+    username: str = Field(..., min_length=3, max_length=50, pattern="^[a-zA-Z0-9_]+$")
+    email: EmailStr  # Pydantic validates email format automatically
 
 class UserCreate(UserBase):
     """Properties needed to CREATE a user(Input)"""
@@ -18,14 +19,17 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
 
-    #This tells Pydantic to read data from sqlalchemy models(which are objects), not just standard dictionaries.
-
+    class Config:
+        # Required for Pydantic to serialize SQLAlchemy ORM models
+        from_attributes = True
 
 
 # DOCUMENT SCHEMAS
 class DocumentBase(BaseModel):
-    title: str
-    content: Optional[str] = None #Content is optional when creating (might be uploaded later)
+    # Title: 1-200 chars (prevents empty/massive titles)
+    title: str = Field(..., min_length=1, max_length=200)
+    # Content: max 50KB (prevents DB overload from huge text blobs)
+    content: Optional[str] = Field(None, max_length=50000)
 
 class DocumentCreate(DocumentBase):
     """Input Schema"""

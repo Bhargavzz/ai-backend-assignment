@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import List
 
 from app import models, schemas, database
@@ -14,23 +15,24 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """
     Create a new user
     """
-    #validation for email
-    db_user_email = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    #validation for username
-    db_user_username = db.query(models.User).filter(models.User.username == user.username).first()
-    if db_user_username:
-        raise HTTPException(status_code=400, detail="Username already taken")
-    
-    #create user object
+    # Create user object
     new_user = models.User(username=user.username, email=user.email)
 
-    #save to db
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    # Let DB constraints handle uniqueness validation (prevents race conditions)
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except IntegrityError as e:
+        db.rollback()
+        # Check which constraint was violated
+        error_msg = str(e.orig).lower()
+        if "email" in error_msg:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        elif "username" in error_msg:
+            raise HTTPException(status_code=400, detail="Username already taken")
+        else:
+            raise HTTPException(status_code=400, detail="Database constraint violation")
 
     return new_user
 
