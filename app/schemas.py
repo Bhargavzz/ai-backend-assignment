@@ -45,5 +45,12 @@ class DocumentResponse(DocumentBase):
     class Config:
         from_attributes = True
 
+# OCR SCHEMA
+class OCRResponse(BaseModel):
+    """Schema for the OCR extraction result"""
+    filename: str
+    content_type: str
+    extracted_text: str
+
 
     
