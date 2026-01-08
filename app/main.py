@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.database import engine, Base
-from app.routers import users, documents
+from app.routers import users, documents, search
 import os
 
 # Only create tables if not in test environment
@@ -14,6 +14,7 @@ app = FastAPI(title="Document Management API")
 #include routers
 app.include_router(users.router)
 app.include_router(documents.router)
+app.include_router(search.router)
 
 @app.get("/")
 def read_root():
