@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from app.database import engine, Base
 from app.routers import users, documents
+import os
 
-# create tables
-# this ensures tables exist when the app starts
-Base.metadata.create_all(bind=engine)
+# Only create tables if not in test environment
+# Tests will create their own tables with their own engine
+if os.getenv("TESTING") != "1":
+    Base.metadata.create_all(bind=engine)
 
 # initialize app
 app = FastAPI(title="Document Management API")
