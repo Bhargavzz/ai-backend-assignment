@@ -6,3 +6,7 @@ python-dotenv
 pydantic[email]
 pytest
 httpx
+pytesseract
+pdf2image
+python-multipart
+Pillow
