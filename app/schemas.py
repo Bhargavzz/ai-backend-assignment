@@ -53,4 +53,37 @@ class OCRResponse(BaseModel):
     extracted_text: str
 
 
+# VECTOR SEARCH SCHEMAS
+
+class IndexRequest(BaseModel):
+    """Request to index documents"""
+    document_ids: List[int]
+
+class IndexResponse(BaseModel):
+    """Response after indexing"""
+    indexed_count: int
+    failed_ids: List[int] = []
+    message: str
+
+class SearchRequest(BaseModel):
+    """Search request"""
+    query: str
+    top_k: int = 5  
+
+class SearchResult(BaseModel):
+    """Single search result"""
+    document_id: int
+    title: str
+    content: str
+    similarity_score: float
+
+class SearchResponse(BaseModel):
+    """Search Response"""
+    query: str
+    results: List[SearchResult]
+    total_results: int
+
+
+
+
     
