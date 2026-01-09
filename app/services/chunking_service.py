@@ -53,7 +53,7 @@ class ChunkingService:
     
 
 # Global instance
-chunking_service = ChunkingService(chunk_size=1000, overlap=100)
+chunking_service = ChunkingService(chunk_size=2000, overlap=200) #2000 chars ~ 500 tokens
 
         
     
