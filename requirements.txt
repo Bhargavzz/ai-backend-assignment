@@ -12,3 +12,5 @@ python-multipart
 Pillow
 faiss-cpu
 sentence-transformers
+langchain
+langchain-text-splitters
