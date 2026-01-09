@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services.vector_service import vector_service
+from app.services.chunking_service import chunking_service
 
 router = APIRouter()
 
@@ -11,7 +12,14 @@ def index_documents(
     request: schemas.IndexRequest,
     db: Session = Depends(get_db)
 ):
-    """Index documents for search"""
+    """Updated: Index docs with chunking(efficient for large docs)
+
+    1. retrieve docs from db
+    2. chunk doc into smaller pieces
+    3. index all chunks in faiss with metadata
+    4. save to disk
+    
+    """
     indexed_count = 0
     failed_ids = []
     
@@ -21,31 +29,37 @@ def index_documents(
             models.Document.id == doc_id
         ).first()
         
-        print(f"DEBUG: Doc {doc_id} - Found: {document is not None}")
+        #print(f"DEBUG: Doc {doc_id} - Found: {document is not None}")
         
         if not document:
             print(f"DEBUG: Doc {doc_id} - Not found")
             failed_ids.append(doc_id)
             continue
         
-        print(f"DEBUG: Doc {doc_id} - Content length: {len(document.content) if document.content else 0}")
+        #print(f"DEBUG: Doc {doc_id} - Content length: {len(document.content) if document.content else 0}")
         
         if not document.content or not document.content.strip():
-            print(f"DEBUG: Doc {doc_id} - No content")
+            #print(f"DEBUG: Doc {doc_id} - No content")
             failed_ids.append(doc_id)
             continue
         
         try:
-            print(f"DEBUG: Doc {doc_id} - Indexing...")
-            vector_service.add_document(doc_id, document.content)
+            #1. Chunk the document
+            chunks = chunking_service.chunk_text(document.content, doc_id)
+
+            if not chunks:
+                #print(f"DEBUG: Doc {doc_id} - No chunks created")
+                failed_ids.append(doc_id)
+                continue
+            #2. Index all chunks
+            vector_service.add_chunks(chunks)
             indexed_count += 1
-            print(f"DEBUG: Doc {doc_id} - Success")
-        except ValueError as e:
-            print(f"DEBUG: Doc {doc_id} - Already indexed: {e}")
-            indexed_count += 1
+        
         except Exception as e:
-            print(f"DEBUG: Doc {doc_id} - Error: {e}")
+            #print(f"DEBUG: Doc {doc_id} - Indexing failed: {str(e)}")
             failed_ids.append(doc_id)
+            
+    
     
     return {
         "indexed_count": indexed_count,
@@ -59,21 +73,23 @@ def search_documents(
     db: Session = Depends(get_db)
 ):
     """
-   Search documents by semantic similarity
+   Search relvant doc chunks by semantic similarity
+
+   this returns chunks(not full docs as in previous version) with metadata
     """
     # Search FAISS for similar document IDs
 
-    faiss_results = vector_service.search(request.query, top_k=request.top_k)
+    chunk_results : list[dict] = vector_service.search(request.query, top_k=request.top_k)
 
-    if not faiss_results:
+    if not chunk_results:
         return {
             "query": request.query,
             "results": [],
             "total_results": 0
         }
     
-    # Get document IDs
-    doc_ids = [doc_id for doc_id,_ in faiss_results]
+    # Get unique document IDs to fetch titles
+    doc_ids = list(set([chunk['doc_id'] for chunk in chunk_results]))
 
     # Fetch full documents from DB
     documents = db.query(models.Document).filter(
@@ -83,17 +99,18 @@ def search_documents(
     # Create lookup map
     doc_map: dict = {doc.id: doc for doc in documents}
 
-    # Build results (wrt faiss order)
+    # Build results with chunk data
     results = []
-    for doc_id, similarity_score in faiss_results:
-        doc = doc_map.get(doc_id)
+    for chunk in chunk_results:
+        doc = doc_map.get(chunk['doc_id'])
         if doc:
-            results.append({
-                "document_id": doc.id,
-                "title":doc.title,
-                "content":doc.content[:150] + "..." if len(doc.content) > 150 else doc.content,
-                "similarity_score": similarity_score
-            })
+            results.append(schemas.SearchResult(
+                document_id=chunk['doc_id'],
+                chunk_id=chunk['chunk_id'],
+                title=doc.title,
+                content=chunk['text'], # (updated to chunk text, not full doc)
+                similarity_score=chunk['similarity_score']
+            ))
     
     return {
         "query": request.query,

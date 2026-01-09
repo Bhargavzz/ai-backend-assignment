@@ -22,11 +22,11 @@ class VectorService:
         self.index = faiss.IndexFlatL2(self.dimension)
 
         # Map FAISS IDs to chunk metadata
-        self.id_map: List[Dict] = []
+        self.chunk_metadata: List[Dict] = []
 
         # File paths for saving/loading index
         self.index_path = "faiss_index.bin"
-        self.metadata_path = "faiss_id_map.json"
+        self.metadata_path = "chunk_metadata.json"
 
         #Load existing index if it exits
         self._load_index()
@@ -43,7 +43,7 @@ class VectorService:
 
         faiss.write_index(self.index, self.index_path)
         with open(self.metadata_path, 'w', encoding = 'utf-8') as f:
-            json.dump(self.id_map, f, ensure_ascii=False, indent=4)
+            json.dump(self.chunk_metadata, f, ensure_ascii=False, indent=4)
     
     def generate_embedding(self, text: str) -> np.ndarray:
         """Convert text to vector(384 numbers)"""
@@ -86,38 +86,8 @@ class VectorService:
 
         # save index
         self._save_index()
-
-
-        
-
-    def add_document(self, document_id: int, text:str):
-        """
-        Add one document to the index
-        
-        Steps:
-        1. Convert text to embedding (vector)
-        2. Add vector to FAISS
-        3. Remember which FAISS ID maps to our document_id
-        4. Save to disk
-        """
-        #check if already indexed
-        if document_id in self.id_map:
-            raise ValueError(f"Document ID {document_id} already indexed.")
     
-        # text to vector
-
-        embedding = self.generate_embedding(text)
-
-        # add to FAISS (needs shape (1,384) for single vector)
-        self.index.add(embedding.reshape(1,-1))
-         
-        # map FAISS internal ID to document_id
-        self.id_map.append(document_id)
-
-        #save index
-        self._save_index()
-    
-    def search(self, query: str,top_k: int =5) -> List[Tuple[int,float]]:
+    def search(self, query: str,top_k: int =5) -> List[Dict]:
         """
         Search for similar chunks.
         

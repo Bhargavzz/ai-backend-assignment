@@ -73,6 +73,7 @@ class SearchRequest(BaseModel):
 class SearchResult(BaseModel):
     """Single search result"""
     document_id: int
+    chunk_id: int 
     title: str
     content: str
     similarity_score: float
