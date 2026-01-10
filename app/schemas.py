@@ -73,6 +73,7 @@ class SearchRequest(BaseModel):
 class SearchResult(BaseModel):
     """Single search result"""
     document_id: int
+    chunk_id: int 
     title: str
     content: str
     similarity_score: float
@@ -83,6 +84,25 @@ class SearchResponse(BaseModel):
     results: List[SearchResult]
     total_results: int
 
+
+
+# AI agent SCHEMAS
+
+class SourceMetadata(BaseModel):
+    """Source citation metadata"""
+    doc_id: int
+    chunk_id: int
+    similarity_score: float
+
+class AskRequest(BaseModel):
+    """Request to ask the AI agent"""
+    query: str = Field(...,min_length=1, max_length=1000)
+
+class AskResponse(BaseModel):
+    """Response from AI agent"""
+    query: str
+    answer: str
+    sources: List[SourceMetadata] = []
 
 
 

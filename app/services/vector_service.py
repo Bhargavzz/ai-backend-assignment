@@ -2,10 +2,17 @@ import os
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from typing import List, Tuple
+from typing import List, Tuple, Dict
+import json
 
 
 class VectorService:
+    """
+    UPDATED:vector serivce for chunk based semantic search.
+
+    Previously in phase 3,we indexed whole documents as single vectors.
+    Now,we chunk documents into smaller parts and index each chunk separately.
+    """
 
     def __init__(self):
         self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
@@ -14,27 +21,29 @@ class VectorService:
         #Create FAISS index
         self.index = faiss.IndexFlatL2(self.dimension)
 
-        # Map FAISS IDs to mysql document IDs
-        self.id_map: List[int] = []
+        # Map FAISS IDs to chunk metadata
+        self.chunk_metadata: List[Dict] = []
 
         # File paths for saving/loading index
         self.index_path = "faiss_index.bin"
-        self.id_map_path = "faiss_id_map.npy"
+        self.metadata_path = "chunk_metadata.json"
 
         #Load existing index if it exits
         self._load_index()
 
     def _load_index(self):
-        """Load saved index from disk"""
-        if os.path.exists(self.index_path) and os.path.exists(self.id_map_path):
+        """Load saved index & metadata from disk"""
+        if os.path.exists(self.index_path) and os.path.exists(self.metadata_path):
             self.index = faiss.read_index(self.index_path)
-            self.id_map = np.load(self.id_map_path).tolist()
+            with open(self.metadata_path, 'r', encoding = 'utf-8') as f:
+                self.chunk_metadata = json.load(f)
 
     def _save_index(self):
-        """Save current index to disk"""
+        """Save current index & metadata to disk"""
 
         faiss.write_index(self.index, self.index_path)
-        np.save(self.id_map_path, np.array(self.id_map))
+        with open(self.metadata_path, 'w', encoding = 'utf-8') as f:
+            json.dump(self.chunk_metadata, f, ensure_ascii=False, indent=4)
     
     def generate_embedding(self, text: str) -> np.ndarray:
         """Convert text to vector(384 numbers)"""
@@ -45,39 +54,53 @@ class VectorService:
         embedding = self.model.encode(text, convert_to_numpy=True)
         return embedding.astype(np.float32)
     
-    def add_document(self, document_id: int, text:str):
+    def add_chunks(self, chunks: List[Dict]):
         """
-        Add one document to the index
+        Add multiple chunks to the index.
         
-        Steps:
-        1. Convert text to embedding (vector)
-        2. Add vector to FAISS
-        3. Remember which FAISS ID maps to our document_id
-        4. Save to disk
+        arguments:
+            chunks: List of chunk dicts from chunking_service
+                    [{text: "...", doc_id: 1, chunk_id: 0}, ...]
+        
+        This replaces add_document() from Phase 3.
+        Now we index chunks, not full documents.
         """
-        #check if already indexed
-        if document_id in self.id_map:
-            raise ValueError(f"Document ID {document_id} already indexed.")
-    
-        # text to vector
+        if not chunks:
+            return
+        
+        # generate embeddings for all chunks
+        texts = [chunk['text'] for chunk in chunks]
+        embeddings = self.model.encode(texts, convert_to_numpy=True).astype(np.float32)
 
-        embedding = self.generate_embedding(text)
+        # add to FAISS
+        self.index.add(embeddings)
 
-        # add to FAISS (needs shape (1,384) for single vector)
-        self.index.add(embedding.reshape(1,-1))
-         
-        # map FAISS internal ID to document_id
-        self.id_map.append(document_id)
+        # store metadata for each chunk
 
-        #save index
+        for chunk in chunks:
+            self.chunk_metadata.append({
+                'doc_id': chunk['doc_id'],
+                'chunk_id': chunk['chunk_id'],
+                'text': chunk['text']
+            })
+
+        # save index
         self._save_index()
     
-    def search(self, query: str,top_k: int =5) -> List[Tuple[int,float]]:
+    def search(self, query: str,top_k: int =5) -> List[Dict]:
         """
-        Search for similar documents
+        Search for similar chunks.
         
-        Returns: List of (document_id, distance_score)
-        Lower distance = more similar
+        Returns: List of chunk results with metadata
+        [
+            {
+                'doc_id': 1,
+                'chunk_id': 0,
+                'text': 'chunk content...',
+                'similarity_score': 0.42
+            },
+            ...
+        ]
         """
         #no docs indexed yet
         if self.index.ntotal == 0:
@@ -93,8 +116,13 @@ class VectorService:
         results = []
         for idx, distance in zip(indices[0], distances[0]):
             if idx != -1: #-1 refers to empty slot
-                doc_id = self.id_map[idx]
-                results.append((doc_id, float(distance)))
+                meta = self.chunk_metadata[idx]
+                results.append({
+                    'doc_id': meta['doc_id'],
+                    'chunk_id': meta['chunk_id'],
+                    'text': meta['text'],
+                    'similarity_score': float(distance)
+                })
             
         return results
     
