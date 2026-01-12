@@ -28,8 +28,8 @@ class UserResponse(UserBase):
 class DocumentBase(BaseModel):
     # Title: 1-200 chars (prevents empty/massive titles)
     title: str = Field(..., min_length=1, max_length=200)
-    # Content: max 50KB (prevents DB overload from huge text blobs)
-    content: Optional[str] = Field(None, max_length=50000)
+    # Content can be very large for OCR extracted text
+    content: Optional[str] = None
 
 class DocumentCreate(DocumentBase):
     """Input Schema"""
@@ -48,6 +48,7 @@ class DocumentResponse(DocumentBase):
 # OCR SCHEMA
 class OCRResponse(BaseModel):
     """Schema for the OCR extraction result"""
+    document_id: int
     filename: str
     content_type: str
     extracted_text: str
@@ -68,7 +69,8 @@ class IndexResponse(BaseModel):
 class SearchRequest(BaseModel):
     """Search request"""
     query: str
-    top_k: int = 5  
+    top_k: int = 5
+    user_id: Optional[int] = None  # Filter results by user  
 
 class SearchResult(BaseModel):
     """Single search result"""
@@ -97,6 +99,7 @@ class SourceMetadata(BaseModel):
 class AskRequest(BaseModel):
     """Request to ask the AI agent"""
     query: str = Field(...,min_length=1, max_length=1000)
+    user_id: Optional[int] = None  # Filter by user's documents
 
 class AskResponse(BaseModel):
     """Response from AI agent"""

@@ -19,17 +19,19 @@ class ChunkingService:
             length_function=len # uses char length for splitting
         )
     
-    def chunk_text(self, text: str, doc_id: int) -> List[Dict]:
+    def chunk_text(self, text: str, doc_id: int, user_id: int) -> List[Dict]:
         """
         arguments:
             text: full doc text
             doc_id: document id from db
+            user_id: owner user id for filtering
         
         returns:
             list of dicts: [{
                 'text': chunkned content,
                 'doc_id':1,
                 'chunk_id':0,
+                'user_id':1,
                 'char_count':500}, ...]  ---> list of dicts with chunk metadata
         """
 
@@ -46,6 +48,7 @@ class ChunkingService:
                 'text': chunk_text,
                 'doc_id': doc_id,
                 'chunk_id': idx,
+                'user_id': user_id,
                 'char_count': len(chunk_text)
             })
         

@@ -81,13 +81,14 @@ class VectorService:
             self.chunk_metadata.append({
                 'doc_id': chunk['doc_id'],
                 'chunk_id': chunk['chunk_id'],
+                'user_id': chunk.get('user_id'),
                 'text': chunk['text']
             })
 
         # save index
         self._save_index()
     
-    def search(self, query: str,top_k: int =5) -> List[Dict]:
+    def search(self, query: str, top_k: int = 5, user_id: int = None) -> List[Dict]:
         """
         Search for similar chunks.
         
@@ -117,6 +118,11 @@ class VectorService:
         for idx, distance in zip(indices[0], distances[0]):
             if idx != -1: #-1 refers to empty slot
                 meta = self.chunk_metadata[idx]
+                
+                # Filter by user_id if provided
+                if user_id is not None and meta.get('user_id') != user_id:
+                    continue
+                
                 results.append({
                     'doc_id': meta['doc_id'],
                     'chunk_id': meta['chunk_id'],

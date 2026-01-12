@@ -16,7 +16,7 @@ def ask_question(request: schemas.AskRequest):
     3.generate ans using azure openai
     """
     try:
-        result = ask_agent(request.query)
+        result = ask_agent(request.query, user_id=request.user_id)
 
         return schemas.AskResponse(
             query=result["query"],

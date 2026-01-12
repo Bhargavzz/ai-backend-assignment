@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.mysql import LONGTEXT
 from datetime import datetime, timezone
 from .database import Base
 
@@ -23,7 +24,7 @@ class Document(Base):
     #Columns
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100),nullable=False)
-    content = Column(Text, nullable=True)
+    content = Column(LONGTEXT, nullable=True)  # Changed to LONGTEXT for large documents
     # Use lambda for per-record timestamp generation
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
