@@ -1,4 +1,4 @@
-from typing import TypedDict, Literal, List, Dict
+from typing import TypedDict, Literal, List, Dict, Optional
 from langchain_openai import AzureChatOpenAI
 from langgraph.graph import StateGraph, END
 from app.services.vector_service import vector_service
@@ -11,6 +11,7 @@ class AgentState(TypedDict):
     chunks: List[Dict]       #retrieved document chunks
     answer: str              #generated answer
     sources: List[Dict]      #source metadata for citations
+    user_id: Optional[int]   #filter search by user
 
 
 #intitalise azure openai llm
@@ -55,8 +56,9 @@ def search_documents(state: AgentState) -> AgentState:
     """query faiss to find relevant chunks"""
 
     query=state["query"]
-    #search faiss
-    chunks=vector_service.search(query, top_k=5)
+    user_id=state.get("user_id")
+    #search faiss with user filter
+    chunks=vector_service.search(query, top_k=5, user_id=user_id)
     state["chunks"]=chunks
     return state
 
@@ -170,12 +172,13 @@ agent_graph=create_agent_graph()
 
 
 #main function to invoke the agent
-def ask_agent(query: str) -> Dict:
+def ask_agent(query: str, user_id: int = None) -> Dict:
     """
     Main entry point for the agent.
     
     Args:
         query: User's question
+        user_id: Optional user ID to filter document search
         
     Returns:
         {
@@ -190,7 +193,8 @@ def ask_agent(query: str) -> Dict:
         "intent": "",
         "chunks": [],
         "answer": "",
-        "sources": []
+        "sources": [],
+        "user_id": user_id
     }
     
     # Run the graph

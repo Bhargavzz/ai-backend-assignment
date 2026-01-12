@@ -45,7 +45,7 @@ def index_documents(
         
         try:
             #1. Chunk the document
-            chunks = chunking_service.chunk_text(document.content, doc_id)
+            chunks = chunking_service.chunk_text(document.content, doc_id, document.user_id)
 
             if not chunks:
                 #print(f"DEBUG: Doc {doc_id} - No chunks created")
@@ -77,9 +77,9 @@ def search_documents(
 
    this returns chunks(not full docs as in previous version) with metadata
     """
-    # Search FAISS for similar document IDs
-
-    chunk_results : list[dict] = vector_service.search(request.query, top_k=request.top_k)
+    # Search FAISS for similar document IDs (filter by user_id if provided)
+    user_id = getattr(request, 'user_id', None)
+    chunk_results : list[dict] = vector_service.search(request.query, top_k=request.top_k, user_id=user_id)
 
     if not chunk_results:
         return {

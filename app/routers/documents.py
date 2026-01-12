@@ -81,6 +81,7 @@ async def upload_document(
 
     # Return OCR response
     return {
+        "document_id": new_doc.id,
         "filename": file.filename,
         "content_type": file.content_type,
         "extracted_text": extracted_text
