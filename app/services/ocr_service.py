@@ -5,6 +5,7 @@ import io
 import shutil
 import os
 from dotenv import load_dotenv
+import pypdf
 
 load_dotenv()
 
@@ -33,18 +34,46 @@ def process_image(image_bytes: bytes) -> str:
     
 
 def process_pdf(pdf_bytes: bytes) -> str:
-    """Converts PDF -> Images -> Text."""
+    """
+    Smart Processing (Fixed for short text):
+    1. Checks if the PDF has ANY selectable text.
+    2. If yes -> Returns text instantly (No OCR).
+    3. If no (or only whitespace) -> Runs standard OCR.
+    """
+    try:
+        pdf_file = io.BytesIO(pdf_bytes)
+        reader = pypdf.PdfReader(pdf_file)
+        full_text = []
+        has_actual_text = False
+
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text()
+            if text:
+                full_text.append(f"--- Page {i+1} ---\n{text.strip()}")
+                
+                if text.strip():
+                    has_actual_text = True
+
+        # If we fond any real text chars, return it directly
+        if has_actual_text:
+            return "\n\n".join(full_text)
+    except Exception as e:
+        #fallback to ocr
+        pass
+
+    #Fallback to OCR
+
     # Ensure Poppler path is set
     if not POPPLER_PATH or not os.path.exists(POPPLER_PATH):
         raise EnvironmentError("Poppler path not set or invalid. Please set POPPLER_PATH in .env.")
     try:
         pages = convert_from_bytes(pdf_bytes, dpi=300, poppler_path=POPPLER_PATH)
-        full_text = []
+        ocr_text = []
         for i, page in enumerate(pages):
             text = pytesseract.image_to_string(page)
-            full_text.append(f"--- Page {i+1} ---\n{text}")
+            ocr_text.append(f"--- Page {i+1} ---\n{text}")
         
-        return "\n\n".join(full_text)
+        return "\n\n".join(ocr_text)
         
     except Exception as e:
         if "poppler" in str(e).lower():

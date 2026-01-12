@@ -1,0 +1,43 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Vishnu@007
+      MYSQL_DATABASE: doc_management_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DB_USER: root
+      DB_PASSWORD: Vishnu@007
+      DB_HOST: mysql
+      DB_NAME: doc_management_db
+      TESTING: 0
+      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION}
+    depends_on:
+      - mysql
+    volumes:
+      - ./faiss_index.bin:/app/faiss_index.bin
+      - ./chunk_metadata.json:/app/chunk_metadata.json
+
+  streamlit:
+    build: .
+    command: streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - api
+
+volumes:
+  mysql_data:
