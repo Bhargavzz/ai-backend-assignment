@@ -7,7 +7,7 @@ import os
 # Agent state definition:
 class AgentState(TypedDict):
     query: str               #user's query
-    intent: str              #user's intent('doc_question','greeting','general')
+    intent: str              #user's intent('search' or 'generate')
     chunks: List[Dict]       #retrieved document chunks
     answer: str              #generated answer
     sources: List[Dict]      #source metadata for citations

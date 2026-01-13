@@ -5,9 +5,14 @@ services:
       MYSQL_ROOT_PASSWORD: Vishnu@007
       MYSQL_DATABASE: doc_management_db
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build: .
@@ -19,12 +24,15 @@ services:
       DB_HOST: mysql
       DB_NAME: doc_management_db
       TESTING: 0
+      TESSERACT_PATH: ""
+      POPPLER_PATH: ""
       AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
       AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT}
       AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION}
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     volumes:
       - ./faiss_index.bin:/app/faiss_index.bin
       - ./chunk_metadata.json:/app/chunk_metadata.json

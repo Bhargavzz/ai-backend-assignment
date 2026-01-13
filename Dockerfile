@@ -11,8 +11,8 @@ WORKDIR /app
 # Copy requirements and install
 COPY requirements.txt .
 # Manually install the lightweight CPU-only version of PyTorch first
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=300 --retries 5 --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --default-timeout=300 --retries 5 --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .

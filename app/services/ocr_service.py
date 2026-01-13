@@ -62,12 +62,15 @@ def process_pdf(pdf_bytes: bytes) -> str:
         pass
 
     #Fallback to OCR
-
-    # Ensure Poppler path is set
-    if not POPPLER_PATH or not os.path.exists(POPPLER_PATH):
-        raise EnvironmentError("Poppler path not set or invalid. Please set POPPLER_PATH in .env.")
+    
+    # Auto-detect Poppler: If POPPLER_PATH is set and exists, use it.
+    # Otherwise, assume poppler is in system PATH (Docker or Linux environment)
+    poppler_path = None
+    if POPPLER_PATH and os.path.exists(POPPLER_PATH):
+        poppler_path = POPPLER_PATH
+    
     try:
-        pages = convert_from_bytes(pdf_bytes, dpi=300, poppler_path=POPPLER_PATH)
+        pages = convert_from_bytes(pdf_bytes, dpi=300, poppler_path=poppler_path)
         ocr_text = []
         for i, page in enumerate(pages):
             text = pytesseract.image_to_string(page)

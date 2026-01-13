@@ -47,5 +47,18 @@ def render_users_tab():
     )
 
     if st.button("Load User"):
-        st.session_state.current_user_id = user_id_input
-        st.success(f"☑️ User {user_id_input} selected")
+        # Validate user exists by checking their documents endpoint
+        try:
+            response = requests.get(
+                f"{API_BASE_URL}/users/{user_id_input}/documents",
+                timeout=5
+            )
+            if response.status_code >= 200 and response.status_code < 300:
+                st.session_state.current_user_id = user_id_input
+                st.success(f"User {user_id_input} selected")
+            elif response.status_code == 404:
+                st.error(f"User ID {user_id_input} does not exist")
+            else:
+                st.error(f"Error validating user: {response.text}")
+        except Exception as e:
+            st.error(f"Failed to validate user: {str(e)}")
